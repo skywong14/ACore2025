@@ -1,0 +1,15 @@
+[package]
+name = "ACore"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sbi-rt = { version = "0.0.2", features = ["legacy"] }
+
+
+[features]
+board_qemu = []
+board_k210 = []
+
+[profile.release]
+debug = true
