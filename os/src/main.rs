@@ -6,6 +6,7 @@
 #[macro_use]
 mod console;
 
+mod uart;
 mod lang_items;
 mod sbi;
 
