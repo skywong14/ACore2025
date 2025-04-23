@@ -6,6 +6,6 @@ extern crate user_lib;
 
 #[unsafe(no_mangle)]
 fn main() -> i32 {
-    println!("Hello, world!");
+    println!("Hello world from U mode!");
     0
 }
