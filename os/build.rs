@@ -43,7 +43,7 @@ fn insert_app_data() -> Result<()> {
 
     // head
     writeln!(
-        f,
+        file,
         r#"
     .align 3
     .section .data
@@ -54,10 +54,10 @@ _num_app:
     )?;
 
     for i in 0..apps.len() {
-        writeln!(f, "    .quad app_{}_start", i)?;
+        writeln!(file, "    .quad app_{}_start", i)?;
     }
     // 单独列出最后一个程序的 end
-    writeln!(f, "    .quad app_{}_end", apps.len() - 1)?;
+    writeln!(file, "    .quad app_{}_end", apps.len() - 1)?;
 
     // incbin
     /*
@@ -71,7 +71,7 @@ _num_app:
     for idx in 0..apps.len() {
         let app = &apps[idx];
         writeln!(
-            f,
+            file,
             r#"
     .section .data
     .global app_{0}_start

@@ -9,6 +9,9 @@ mod console;
 mod uart;
 mod lang_items;
 mod sbi;
+mod batch;
+mod sync;
+mod syscall;
 
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
