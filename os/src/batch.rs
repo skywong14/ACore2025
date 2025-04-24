@@ -66,7 +66,7 @@ impl AppManager {
         unsafe {
             // clear app area
             core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT).fill(0);
-
+            
             // load app
             let app_src = core::slice::from_raw_parts(
                 self.app_start[app_id] as *const u8, // data_ptr
@@ -90,7 +90,15 @@ impl AppManager {
     }
 
     pub fn print_app_info(&self) {
-        // print app info
+        println!("[kernel] App ID: {}", self.num_app);
+        for i in 0..self.num_app {
+            println!(
+                "[kernel] app_{} [{:#x}, {:#x})",
+                i,
+                self.app_start[i],
+                self.app_start[i + 1]
+            );
+        }
     }
 }
 
@@ -152,7 +160,9 @@ pub fn run_next_app() -> !{
     app_manager.load_app(cur_app);
     app_manager.move_to_next_app();
     drop(app_manager); // drop the lock
-
+    
+    println!("[kernel] switching ctx");
+    
     unsafe extern "C" { fn __restore(cx_addr: usize); }
     // jump to app, switch context
     unsafe {

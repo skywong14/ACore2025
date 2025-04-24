@@ -21,9 +21,9 @@ fn main() -> i32 {
 }
 
 fn clear_bss() {
-    unsafe extern "C" {
-        safe fn start_bss();
-        safe fn end_bss();
+    unsafe extern "C" { 
+        fn start_bss();
+        fn end_bss();
     }
     (start_bss as usize..end_bss as usize).for_each(|addr| unsafe {
         (addr as *mut u8).write_volatile(0);

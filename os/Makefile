@@ -16,8 +16,8 @@ qemu_nosbi:
       -device loader,file=target/riscv64gc-unknown-none-elf/release/Acore.bin,addr=0x80000000 \
       -s -S
 
-.PHONY: qemu_gdb
-qemu_gdb:
+.PHONY: gdb
+gdb:
 	riscv64-unknown-elf-gdb \
       -ex 'file target/riscv64gc-unknown-none-elf/release/ACore' \
       -ex 'set arch riscv:rv64' \
