@@ -1,13 +1,21 @@
 // os/src/sbi.rs
 
 // console_putchar
-pub fn console_putchar(c: u8) {
+pub fn console_putchar(c: usize) {
+    #[allow(deprecated)]
     crate::uart::putchar(c);
+}
+
+// console_getchar
+pub fn console_getchar() -> usize {
+    // #[allow(deprecated)]
+    crate::uart::getchar() as usize
+    //sbi_rt::legacy::console_getchar()
 }
 
 // shutdown
 pub fn shutdown(failure: bool) -> ! {
-    // QEMU 测试设备地址(从QEMU内存映射表确认)
+    // QEMU 测试设备地址
     const TEST_DEVICE_ADDR: usize = 0x100000;
 
     // QEMU关机魔数
@@ -23,6 +31,6 @@ pub fn shutdown(failure: bool) -> ! {
             core::ptr::write_volatile(TEST_DEVICE_ADDR as *mut u32, FAILURE_CODE);
         }
     }
-    
+
     loop {}
 }

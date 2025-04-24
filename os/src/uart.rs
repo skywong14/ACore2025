@@ -60,14 +60,14 @@ pub fn getchar() -> u8 {
 }
 
 // putchar
-pub fn putchar(c: u8) {
+pub fn putchar(c: usize) {
     unsafe {
         // wait till the transmitter is idle
         while (read_volatile((UART0_BASE_ADDR + LSR) as *const u8) & LSR_TX_IDLE) == 0 {
             // wait
         }
 
-        write_volatile((UART0_BASE_ADDR + THR) as *mut u8, c);
+        write_volatile((UART0_BASE_ADDR + THR) as *mut u8, c as u8);
     }
 }
 
