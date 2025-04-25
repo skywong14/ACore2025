@@ -1,4 +1,4 @@
-// src/drivers/uart.rs
+// os/src/uart.rs
 use core::ptr::{read_volatile, write_volatile};
 
 // https://github.com/qemu/qemu/blob/7598971167080a8328a1b8e22425839cb4ccf7b7/hw/riscv/virt.c#L97
