@@ -93,16 +93,4 @@ fn main() {
     println!("cargo:rerun-if-changed={}", TARGET_PATH);
 
     insert_app_data().unwrap();
-    //
-    // // 2) 调用 cc 把两个 .S 都 assemble 并 produce 一个静态库给后面链接
-    // Build::new()
-    //     .archiver("riscv64")
-    //     .flag("-march=rv64gc")
-    //     .flag("-mabi=lp64")
-    //     .file("src/boot.s")
-    //     .file("src/link_app.s")
-    //     .compile("firmware");
-    //
-    // // 3) 把自定义的 linker.ld 传给 rustc
-    // println!("cargo:rustc-link-arg=-Tlinker.ld");
 }
