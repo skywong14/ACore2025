@@ -4,8 +4,8 @@
 /// user bin in ../user/src/bin/xxx.rs,
 /// compiled to ../user/target/riscv64gc-unknown-none-elf/release/xxx(.bin)
 
-use std::fs::{File, read_dir};
-use std::io::{Write, Result};
+use std::fs::{read_dir, File};
+use std::io::{Result, Write};
 
 const USER_BIN_DIR: &str = "../user/src/bin";
 const TARGET_PATH: &str = "../user/target/riscv64gc-unknown-none-elf/release/";

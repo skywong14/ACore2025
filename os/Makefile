@@ -26,7 +26,4 @@ gdb:
 .PHONY: build
 build:
 	cargo build --release
-
-.PHONY: format
-format:
 	rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/ACore -O binary target/riscv64gc-unknown-none-elf/release/Acore.bin

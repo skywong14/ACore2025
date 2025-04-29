@@ -25,7 +25,6 @@ pub enum Exception {
 
 mod context;
 
-use crate::batch::run_next_app;
 use crate::syscall::syscall; // include sys_write/sys_exit/... 
 use core::arch::global_asm;
 use riscv::register::{
@@ -56,12 +55,14 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
+            println!(
+                "[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
+                stval, ctx.sepc
+            );
             println!("[kernel] PageFault");
-            run_next_app();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction");
-            run_next_app();
         }
         _ => {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
