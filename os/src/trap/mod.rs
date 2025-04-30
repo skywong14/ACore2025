@@ -29,9 +29,11 @@ use crate::syscall::syscall; // include sys_write/sys_exit/...
 use core::arch::global_asm;
 use riscv::register::{
     mtvec::TrapMode,
-    scause::{self, Exception, Trap},
+    scause::{self, Exception, Trap, Interrupt},
     stval, stvec,
 };
+use crate::task::suspend_current_and_run_next;
+use crate::timer::set_next_trigger;
 pub(crate) use crate::trap::context::TrapContext;
 
 global_asm!(include_str!("trap.s"));
@@ -63,6 +65,10 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction");
+        }
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            set_next_trigger();
+            suspend_current_and_run_next();
         }
         _ => {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);

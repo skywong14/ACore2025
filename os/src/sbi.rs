@@ -1,5 +1,7 @@
 // os/src/sbi.rs
 
+use crate::uart::{get_time_uart, set_timer_uart};
+
 // console_putchar
 pub fn console_putchar(c: usize) {
     #[allow(deprecated)]
@@ -10,7 +12,6 @@ pub fn console_putchar(c: usize) {
 pub fn console_getchar() -> usize {
     // #[allow(deprecated)]
     crate::uart::getchar() as usize
-    //sbi_rt::legacy::console_getchar()
 }
 
 // shutdown
@@ -33,4 +34,14 @@ pub fn shutdown(failure: bool) -> ! {
     }
 
     loop {}
+}
+
+// set timer
+pub fn set_timer(timer: usize) {
+    set_timer_uart(timer);
+}
+
+// get time
+pub fn get_time_sbi() -> usize {
+    get_time_uart()
 }

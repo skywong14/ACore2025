@@ -80,3 +80,24 @@ unsafe fn write_uart_reg(offset: usize, value: u8) {
     assert!(offset < UART0_SIZE, "UART register offset out of range");
     write_volatile((UART0_BASE_ADDR + offset) as *mut u8, value);
 }
+
+const CLINT_BASE:     usize = 0x2000000;
+const CLINT_MTIMECMP: usize = CLINT_BASE + 0x4000; // hart 0, if single core
+const CLINT_MTIME:    usize = CLINT_BASE + 0xBFF8;
+
+pub fn set_timer_uart(timer: usize) {
+    unsafe {
+        let mtimecmp = CLINT_MTIMECMP as *mut u32;
+        write_volatile(mtimecmp.add(1), (timer >> 32) as u32);
+        write_volatile(mtimecmp,(timer & 0xFFFF_FFFF) as u32);
+    }
+}
+
+pub fn get_time_uart() -> usize {
+    unsafe {
+        let mtime = CLINT_MTIME as *const u32;
+        let high = read_volatile(mtime.add(1)) as usize;
+        let low = read_volatile(mtime) as usize;
+        (high << 32) | low
+    }
+}
