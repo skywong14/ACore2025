@@ -82,6 +82,7 @@ impl TaskManager {
     }
 
     fn run_next(&self) {
+        println!("[kernel] current time: {}", crate::timer::get_time());
         let cur : usize = self.inner.exclusive_access().current_task;
         if let Some(nxt) = self.find_next_task(cur) {
             let mut task_manager = self.inner.exclusive_access();
@@ -96,6 +97,7 @@ impl TaskManager {
             }
             // already switch to next task, running (U mode)
         } else {
+            println!("Finish time: {}", crate::timer::get_time());
             println!("All applications completed!");
             shutdown(false);
         }

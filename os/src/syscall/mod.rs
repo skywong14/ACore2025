@@ -2,6 +2,7 @@
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_YIELD: usize = 124;
+const SYSCALL_GET_TIME: usize = 169;
 
 mod file_syscall;
 mod process;
@@ -19,6 +20,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         }
         SYSCALL_YIELD => {
             sys_yield()
+        }
+        SYSCALL_GET_TIME => {
+            sys_get_time()
         }
         _ => core::panic!("Unsupported syscall id {}", syscall_id),
     }

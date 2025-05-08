@@ -88,8 +88,12 @@ const CLINT_MTIME:    usize = CLINT_BASE + 0xBFF8;
 pub fn set_timer_uart(timer: usize) {
     unsafe {
         let mtimecmp = CLINT_MTIMECMP as *mut u32;
+        
+        write_volatile(mtimecmp.add(1), 0xFFFF_FFFF);
+        write_volatile(mtimecmp, 0xFFFF_FFFF);
+        
         write_volatile(mtimecmp.add(1), (timer >> 32) as u32);
-        write_volatile(mtimecmp,(timer & 0xFFFF_FFFF) as u32);
+        write_volatile(mtimecmp, timer as u32);
     }
 }
 

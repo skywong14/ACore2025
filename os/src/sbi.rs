@@ -41,7 +41,7 @@ pub fn set_timer(timer: usize) {
     set_timer_uart(timer);
 }
 
-// get time
+// get timer
 pub fn get_time_sbi() -> usize {
     get_time_uart()
 }
