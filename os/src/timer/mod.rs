@@ -13,7 +13,7 @@ global_asm!(include_str!("m_trap.s"));
 
 #[unsafe(link_section = ".bss.stack")]
 #[unsafe(no_mangle)]
-pub static mut TIEMR_SCRATCH: [usize; 5] = [0; 5];
+pub static mut TIMER_SCRATCH: [usize; 5] = [0; 5];
 
 pub fn get_time() -> usize {
     get_time_sbi()
@@ -29,7 +29,7 @@ pub fn get_time_us() -> usize {
 }
 
 pub unsafe fn init_timer() {
-    let mscratch_ptr = unsafe { core::ptr::addr_of!(TIEMR_SCRATCH) as usize };
+    let mscratch_ptr = unsafe { core::ptr::addr_of!(TIMER_SCRATCH) as usize };
     mscratch::write(mscratch_ptr);
     //println!("TIMER_SCRATCH at {:x}", mscratch_ptr);
     
@@ -38,8 +38,8 @@ pub unsafe fn init_timer() {
         fn m_trap_entry();
     }
 
-    TIEMR_SCRATCH[3] = 0x2000000 + 0x4000;
-    TIEMR_SCRATCH[4] = TIME_INTERVAL;
+    TIMER_SCRATCH[3] = 0x2000000 + 0x4000;
+    TIMER_SCRATCH[4] = TIME_INTERVAL;
 
     mtvec::write(m_trap_entry as usize, mtvec::TrapMode::Direct);
 

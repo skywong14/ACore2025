@@ -5,7 +5,7 @@
 _start:
     # init sp in M-mode
     la      sp,   _stack_top
-    j rust_boot 
+    j       rust_boot 
     
 #---------------------
 # symbol

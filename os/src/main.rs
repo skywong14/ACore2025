@@ -4,6 +4,10 @@
 #![feature(panic_info_message)]
 
 #[macro_use]
+extern crate bitflags;
+extern crate alloc;
+
+#[macro_use]
 mod console;
 
 pub mod task;
@@ -17,6 +21,7 @@ mod sbi;
 mod sync;
 mod timer;
 mod config;
+mod mm;
 
 use core::arch::{asm, global_asm};
 use riscv::register::{mepc, mideleg, mstatus, pmpaddr0, pmpcfg0, satp, sie};
@@ -67,7 +72,7 @@ unsafe fn rust_boot() {
     // init timer in M mode
     timer::init_timer();
 
-    // 全委托给 S-mode (包括 S-mode 的 ecall)
+    // 全委托给 S-mode
     mideleg::set_stimer();
     mideleg::set_sext();
     mideleg::set_ssoft();
