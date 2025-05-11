@@ -36,6 +36,22 @@ impl From<PhyPageNum> for usize {
     fn from(v: PhyPageNum) -> Self { v.0 }
 }
 
+impl From<usize> for VirAddr {
+    fn from(v: usize) -> Self { Self(v & ( (1 << PA_WIDTH) - 1 )) }
+}
+
+impl From<usize> for VirPageNum {
+    fn from(v: usize) -> Self { Self(v & ( (1 << PPN_WIDTH) - 1 )) }
+}
+
+impl From<VirAddr> for usize {
+    fn from(v: VirAddr) -> Self { v.0 }
+}
+
+impl From<VirPageNum> for usize {
+    fn from(v: VirPageNum) -> Self { v.0 }
+}
+
 // ----- Identical -----
 impl From<PhyPageNum> for VirPageNum {
     fn from(v: PhyPageNum) -> Self { VirPageNum(v.0) }

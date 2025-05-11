@@ -2,9 +2,8 @@
 use core::ptr::{read_volatile, write_volatile};
 
 // https://github.com/qemu/qemu/blob/7598971167080a8328a1b8e22425839cb4ccf7b7/hw/riscv/virt.c#L97
-// UART0 的物理地址
-const UART0_BASE_ADDR: usize = 0x10000000;
-const UART0_SIZE: usize = 0x100;
+
+use crate::config::{UART0_BASE_ADDR, UART0_SIZE};
 
 // 寄存器偏移量
 const RBR: usize = 0;  // 接收缓冲寄存器
