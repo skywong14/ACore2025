@@ -2,7 +2,6 @@
 
 use alloc::vec;
 use alloc::vec::Vec;
-use core::intrinsics::unreachable;
 use bitflags::*;
 use super::address::{PhyPageNum, VirPageNum};
 
@@ -140,7 +139,7 @@ impl PageTable {
     // unmap
     pub fn unmap(&mut self, vpn: VirPageNum) {
         if let Some(pte) = self.find_entry(vpn) {
-            pte.set_flags(PTEFlags::empty());
+            pte.set_flags(PTEFlags::empty()); // 重置页表项 
         } else {
             panic!("[page_table] unmap failed: {:#x}", vpn.0);
         }
@@ -151,5 +150,17 @@ impl PageTable {
         let ppn = self.root_ppn.0;
         let mode = 8; // Sv39
         (mode << 60) | ppn 
+    }
+
+    // temporarily used to get arguments from user space
+    // from_token() will create a new page table, then we can use translate() to look up a PTE by VPN
+    pub fn from_token(satp: usize) -> Self {
+        Self {
+            root_ppn: PhyPageNum::from(satp & ((1usize << 44) - 1)),
+            frames: Vec::new(),
+        }
+    }
+    pub fn translate(&self, vpn: VirPageNum) -> Option<PageTableEntry> {
+        self.find_entry(vpn).map(|pte| {pte.clone()})
     }
 }

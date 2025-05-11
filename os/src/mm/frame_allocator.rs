@@ -12,15 +12,27 @@ pub struct FrameTracker {
     pub ppn: PhyPageNum,
 }
 
+// The creation(`new`) of frame is equivalent to the allocation of frame allocator,
+// The dropping of frame is equivalent to the deallocation of frame allocator.
 impl FrameTracker {
     // ----- constructor -----
-    pub fn new(ppn: PhyPageNum) -> Self {
-        // page cleaning
-        let bytes_array = ppn.get_bytes_array();
-        for i in bytes_array {
-            *i = 0;
+    pub fn new() -> Self {
+        let frame = frame_alloc();
+        match frame {
+            Some(frame) => {
+                let ret =  Self { ppn: frame.ppn };
+                ret.init();
+                ret
+            },
+            None => panic!("[panic] frame_alloc failed"),
         }
-        Self { ppn }
+    }
+    
+    pub fn from_existed_and_init(ppn: PhyPageNum) -> Self {
+        // page cleaning
+        let ret = Self {ppn};
+        ret.init();
+        ret
     }
 
     pub fn from_existed(ppn: PhyPageNum) -> Self {
@@ -104,7 +116,7 @@ impl StackFrameAllocator {
             .iter()
             .find(|&v| {*v == ppn})
             .is_some() {
-            panic!("[frame_allocator] Frame ppn={:#x} deallocation failed.", ppn);
+            panic!("[frame_allocator] Frame ppn={:#x} deallocation failed.", ppn.0);
         }
         self.recycled.push(ppn);
     }
@@ -129,7 +141,7 @@ pub fn init_frame_allocator() {
 pub fn frame_alloc() -> Option<FrameTracker> {
     let opt_ppn = FRAME_ALLOCATOR.exclusive_access().alloc();
     match opt_ppn {
-        Some(ppn) => Some(FrameTracker::new(ppn)),
+        Some(ppn) => Some(FrameTracker::from_existed_and_init(ppn)),
         None => None,
     }
 }

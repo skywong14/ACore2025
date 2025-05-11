@@ -12,6 +12,7 @@ pub struct PhyPageNum(pub usize);
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct VirPageNum(pub usize);
 
+use core::ops::{self, AddAssign};
 use crate::config::{
     PAGE_SIZE,
     PAGE_SIZE_BITS,
@@ -19,6 +20,7 @@ use crate::config::{
     PPN_WIDTH,
 };
 use crate::mm::page_table::PageTableEntry;
+use crate::mm::range::Step;
 
 // ----- usize -----
 impl From<usize> for PhyAddr {
@@ -32,6 +34,15 @@ impl From<PhyAddr> for usize {
 }
 impl From<PhyPageNum> for usize {
     fn from(v: PhyPageNum) -> Self { v.0 }
+}
+
+// ----- Identical -----
+impl From<PhyPageNum> for VirPageNum {
+    fn from(v: PhyPageNum) -> Self { VirPageNum(v.0) }
+}
+
+impl From<VirPageNum> for PhyPageNum {
+    fn from(v: VirPageNum) -> Self { PhyPageNum(v.0) }
 }
 
 // ----- Addr/PageNum -----
@@ -103,3 +114,14 @@ impl PhyPageNum {
         unsafe { core::slice::from_raw_parts_mut(start_ptr, PAGE_SIZE) }
     }
 }
+
+// ----- override operators -----
+impl AddAssign<usize> for PhyAddr { fn add_assign(&mut self, rhs: usize) { self.0 += rhs; } }
+impl AddAssign<usize> for VirAddr { fn add_assign(&mut self, rhs: usize) { self.0 += rhs; } }
+impl AddAssign<usize> for PhyPageNum { fn add_assign(&mut self, rhs: usize) { self.0 += rhs; } }
+impl AddAssign<usize> for VirPageNum { fn add_assign(&mut self, rhs: usize) { self.0 += rhs; } }
+
+impl Step for PhyAddr { fn step(&mut self) { self.add_assign(1); } }
+impl Step for VirAddr { fn step(&mut self) { self.add_assign(1); } }
+impl Step for PhyPageNum { fn step(&mut self) { self.add_assign(1); } }
+impl Step for VirPageNum { fn step(&mut self) { self.add_assign(1); } }
