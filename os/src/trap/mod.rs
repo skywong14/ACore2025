@@ -38,7 +38,6 @@ pub fn trap_from_kernel() -> ! {
     panic!("a trap from kernel!");
 }
 
-// todo
 #[unsafe(no_mangle)]
 pub fn trap_handler() -> ! {
     let scause = scause::read();
