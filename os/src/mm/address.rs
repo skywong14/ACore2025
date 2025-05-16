@@ -12,13 +12,8 @@ pub struct PhyPageNum(pub usize);
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct VirPageNum(pub usize);
 
-use core::ops::{self, AddAssign};
-use crate::config::{
-    PAGE_SIZE,
-    PAGE_SIZE_BITS,
-    PA_WIDTH,
-    PPN_WIDTH,
-};
+use core::ops::AddAssign;
+use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS, PA_WIDTH, PPN_WIDTH, VA_WIDTH};
 use crate::mm::page_table::PageTableEntry;
 use crate::mm::range::Step;
 
@@ -27,29 +22,26 @@ impl From<usize> for PhyAddr {
     fn from(v: usize) -> Self { Self(v & ( (1 << PA_WIDTH) - 1 )) }
 }
 impl From<usize> for PhyPageNum {
-    fn from(v: usize) -> Self { Self(v & ( (1 << PPN_WIDTH) - 1 )) }
+    fn from(v: usize) -> Self { Self( (v & ( (1 << PA_WIDTH) - 1 )) >> PAGE_SIZE_BITS) }
 }
 impl From<PhyAddr> for usize {
     fn from(v: PhyAddr) -> Self { v.0 }
 }
 impl From<PhyPageNum> for usize {
-    fn from(v: PhyPageNum) -> Self { v.0 }
+    fn from(v: PhyPageNum) -> Self { v.0 << PAGE_SIZE_BITS }
 }
 
 impl From<usize> for VirAddr {
-    fn from(v: usize) -> Self { Self(v & ( (1 << PA_WIDTH) - 1 )) }
+    fn from(v: usize) -> Self { Self(v & ((1 << VA_WIDTH) - 1 )) }
 }
-
 impl From<usize> for VirPageNum {
-    fn from(v: usize) -> Self { Self(v & ( (1 << PPN_WIDTH) - 1 )) }
+    fn from(v: usize) -> Self { Self( (v & ( (1 << VA_WIDTH) - 1 )) >> PAGE_SIZE_BITS) }
 }
-
 impl From<VirAddr> for usize {
     fn from(v: VirAddr) -> Self { v.0 }
 }
-
 impl From<VirPageNum> for usize {
-    fn from(v: VirPageNum) -> Self { v.0 }
+    fn from(v: VirPageNum) -> Self { v.0  << PAGE_SIZE_BITS }
 }
 
 // ----- Identical -----
@@ -62,6 +54,15 @@ impl From<VirPageNum> for PhyPageNum {
 }
 
 // ----- Addr/PageNum -----
+impl From<VirAddr> for VirPageNum {
+    fn from(v: VirAddr) -> Self {
+        assert_eq!(v.page_offset(), 0); // 虚拟地址必须位于页的起始
+        v.floor()
+    }
+}
+impl From<VirPageNum> for VirAddr {
+    fn from(v: VirPageNum) -> Self { Self(v.0 << PAGE_SIZE_BITS) }
+}
 
 impl From<PhyAddr> for PhyPageNum {
     fn from(v: PhyAddr) -> Self {
@@ -69,13 +70,11 @@ impl From<PhyAddr> for PhyPageNum {
         v.floor()
     }
 }
-
 impl From<PhyPageNum> for PhyAddr {
     fn from(v: PhyPageNum) -> Self { Self(v.0 << PAGE_SIZE_BITS) }
 }
 
 // ----- methods for Addr -----
-
 impl VirAddr {
     pub fn ceil(&self) -> VirPageNum {
         if self.page_offset() == 0 {
@@ -128,6 +127,12 @@ impl PhyPageNum {
     pub fn as_raw_bytes(&self) -> &'static mut [u8] {
         let start_ptr = usize::from(*self) as *mut u8;
         unsafe { core::slice::from_raw_parts_mut(start_ptr, PAGE_SIZE) }
+    }
+
+    // 把当前物理页看作任何类型 T 可变引用
+    pub fn as_mut<T>(&self) -> &'static mut T {
+        let pa: PhyAddr = (*self).into();
+        unsafe { (pa.0 as *mut T).as_mut().unwrap() }
     }
 }
 

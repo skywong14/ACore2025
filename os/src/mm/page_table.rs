@@ -3,9 +3,9 @@
 use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::*;
-use super::address::{PhyPageNum, VirPageNum};
+use super::address::{PhyPageNum, VirAddr, VirPageNum};
 
-use crate::config::{PAGE_SIZE, PAGE_SIZE_BITS, PA_WIDTH, VA_WIDTH};
+use crate::config::{PAGE_SIZE_BITS, PA_WIDTH};
 use crate::mm::frame_allocator::FrameTracker;
 
 // bit0-7: PTEFlags
@@ -68,6 +68,10 @@ impl PageTableEntry {
     pub fn is_valid(&self) -> bool {
         self.get_flags().contains(PTEFlags::V)
     }
+    
+    pub fn writable(&self) -> bool { self.get_flags().contains(PTEFlags::W) }
+    
+    pub fn executable(&self) -> bool { self.get_flags().contains(PTEFlags::X) }
 }
 
 // ----- PageTable -----
@@ -153,14 +157,40 @@ impl PageTable {
     }
 
     // temporarily used to get arguments from user space
-    // from_token() will create a new page table, then we can use translate() to look up a PTE by VPN
-    pub fn from_token(satp: usize) -> Self {
+    // from_satp_token() will create a new page table, then we can use translate() to look up a PTE by VPN
+    pub fn from_satp_token(satp: usize) -> Self {
         Self {
-            root_ppn: PhyPageNum::from(satp & ((1usize << 44) - 1)),
+            root_ppn: PhyPageNum(satp & ((1usize << 44) - 1)),
             frames: Vec::new(),
         }
     }
     pub fn translate(&self, vpn: VirPageNum) -> Option<PageTableEntry> {
         self.find_entry(vpn).map(|pte| {pte.clone()})
     }
+}
+
+// translate a pointer to a mutable u8 Vec through page table
+pub fn translated_byte_buffer(satp_token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+    let mut result = Vec::new();
+    let page_table = PageTable::from_satp_token(satp_token);
+    let mut start = ptr as usize;
+    let end = start + len;
+    
+    while start < end {
+        let start_va = VirAddr::from(start);
+        let mut start_vpn = start_va.floor();
+        let ppn = page_table.translate(start_vpn).unwrap().get_ppn();
+        start_vpn.0 += 1; // next page
+        let mut end_va: VirAddr = start_vpn.into();
+        end_va = end_va.min(VirAddr::from(end));
+        if end_va.page_offset() == 0 {
+            // aligned, copy a whole page
+            result.push(&mut ppn.as_raw_bytes()[start_va.page_offset()..]);
+        } else {
+            // unaligned
+            result.push(&mut ppn.as_raw_bytes()[start_va.page_offset()..end_va.page_offset()]);
+        }
+        start = end_va.into();
+    }
+    result
 }

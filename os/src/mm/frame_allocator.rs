@@ -12,43 +12,17 @@ pub struct FrameTracker {
     pub ppn: PhyPageNum,
 }
 
-// The creation(`new`) of frame is equivalent to the allocation of frame allocator,
 // The dropping of frame is equivalent to the deallocation of frame allocator.
+// but we need `frame_alloc` to allocate a new frame
 impl FrameTracker {
     // ----- constructor -----
-    pub fn new() -> Self {
-        let frame = frame_alloc();
-        match frame {
-            Some(frame) => {
-                let ret =  Self { ppn: frame.ppn };
-                ret.init();
-                ret
-            },
-            None => panic!("[panic] frame_alloc failed"),
+    pub fn new(ppn: PhyPageNum) -> Self {
+        let bytes = ppn.as_raw_bytes();
+        for i in bytes {
+            *i = 0;
         }
-    }
-    
-    pub fn from_existed_and_init(ppn: PhyPageNum) -> Self {
-        // page cleaning
-        let ret = Self {ppn};
-        ret.init();
-        ret
-    }
-
-    pub fn from_existed(ppn: PhyPageNum) -> Self {
         Self { ppn }
     }
-
-    // ----- methods -----
-    pub fn init(&self) {
-        // page cleaning
-        let ptr = usize::from(self.ppn) as *mut u8;
-        unsafe {
-            core::slice::from_raw_parts_mut(ptr, PAGE_SIZE).fill(0);
-        }
-    }
-
-    pub fn get_ppn(&self) -> PhyPageNum { self.ppn }
 }
 
 impl Drop for FrameTracker {
@@ -71,9 +45,9 @@ pub struct StackFrameAllocator {
     recycled: Vec<PhyPageNum>,
 }
 
-impl StackFrameAllocator {
+impl FrameAllocator for StackFrameAllocator {
     // ----- constructor -----
-    pub fn new() -> StackFrameAllocator {
+    fn new() -> StackFrameAllocator {
         StackFrameAllocator {
             current: PhyPageNum(0),
             end: PhyPageNum(0),
@@ -81,25 +55,7 @@ impl StackFrameAllocator {
         }
     }
 
-    pub fn new_with_range(start: usize, end: usize) -> StackFrameAllocator {
-        StackFrameAllocator {
-            current: PhyAddr::from(start).ceil(),
-            end: PhyAddr::from(end).floor(),
-            recycled: Vec::new(),
-        }
-    }
-
-    // ----- methods -----
-    pub fn init(&mut self, start: usize, end: usize) {
-        if self.current != PhyPageNum(0) || self.end != PhyPageNum(0) {
-            panic!("[frame_allocator] Frame allocator cannot be initialize twice.");
-        }
-        self.current = PhyAddr::from(start).ceil();
-        self.end = PhyAddr::from(end).floor();
-    }
-
-    pub fn alloc(&mut self) -> Option<PhyPageNum> {
-        let candidate = self.recycled.pop();
+    fn alloc(&mut self) -> Option<PhyPageNum> {        let candidate = self.recycled.pop();
         if let Some(ppn) = candidate {
             Some(ppn)
         } else if self.current < self.end {
@@ -111,7 +67,7 @@ impl StackFrameAllocator {
         }
     }
 
-    pub fn dealloc(&mut self, ppn: PhyPageNum) {
+    fn dealloc(&mut self, ppn: PhyPageNum) {
         if ppn >= self.current || self.recycled
             .iter()
             .find(|&v| {*v == ppn})
@@ -119,6 +75,25 @@ impl StackFrameAllocator {
             panic!("[frame_allocator] Frame ppn={:#x} deallocation failed.", ppn.0);
         }
         self.recycled.push(ppn);
+    }
+}
+
+impl StackFrameAllocator {
+    fn new_with_range(start: usize, end: usize) -> StackFrameAllocator {
+        StackFrameAllocator {
+            current: PhyAddr::from(start).ceil(),
+            end: PhyAddr::from(end).floor(),
+            recycled: Vec::new(),
+        }
+    }
+
+    // ----- methods -----
+    fn init(&mut self, start: usize, end: usize) {
+        if self.current != PhyPageNum(0) || self.end != PhyPageNum(0) {
+            panic!("[frame_allocator] Frame allocator cannot be initialize twice.");
+        }
+        self.current = PhyAddr::from(start).ceil();
+        self.end = PhyAddr::from(end).floor();
     }
 }
 
@@ -141,7 +116,7 @@ pub fn init_frame_allocator() {
 pub fn frame_alloc() -> Option<FrameTracker> {
     let opt_ppn = FRAME_ALLOCATOR.exclusive_access().alloc();
     match opt_ppn {
-        Some(ppn) => Some(FrameTracker::from_existed_and_init(ppn)),
+        Some(ppn) => Some(FrameTracker::new(ppn)),
         None => None,
     }
 }

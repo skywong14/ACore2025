@@ -3,7 +3,7 @@ use core::ptr::{read_volatile, write_volatile};
 
 // https://github.com/qemu/qemu/blob/7598971167080a8328a1b8e22425839cb4ccf7b7/hw/riscv/virt.c#L97
 
-use crate::config::{UART0_BASE_ADDR, UART0_SIZE};
+use crate::config::{CLINT_MTIME, CLINT_MTIMECMP, UART0_BASE_ADDR, UART0_SIZE};
 
 // 寄存器偏移量
 const RBR: usize = 0;  // 接收缓冲寄存器
@@ -78,29 +78,4 @@ unsafe fn read_uart_reg(offset: usize) -> u8 {
 unsafe fn write_uart_reg(offset: usize, value: u8) {
     assert!(offset < UART0_SIZE, "UART register offset out of range");
     write_volatile((UART0_BASE_ADDR + offset) as *mut u8, value);
-}
-
-const CLINT_BASE:     usize = 0x2000000;
-const CLINT_MTIMECMP: usize = CLINT_BASE + 0x4000; // hart 0, if single core
-const CLINT_MTIME:    usize = CLINT_BASE + 0xBFF8;
-
-pub fn set_timer_uart(timer: usize) {
-    unsafe {
-        let mtimecmp = CLINT_MTIMECMP as *mut u32;
-        
-        write_volatile(mtimecmp.add(1), 0xFFFF_FFFF);
-        write_volatile(mtimecmp, 0xFFFF_FFFF);
-        
-        write_volatile(mtimecmp.add(1), (timer >> 32) as u32);
-        write_volatile(mtimecmp, timer as u32);
-    }
-}
-
-pub fn get_time_uart() -> usize {
-    unsafe {
-        let mtime = CLINT_MTIME as *const u32;
-        let high = read_volatile(mtime.add(1)) as usize;
-        let low = read_volatile(mtime) as usize;
-        (high << 32) | low
-    }
 }

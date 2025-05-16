@@ -4,10 +4,10 @@ mod switch;
 mod context;
 mod task;
 
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 pub use context::TaskContext;
 use task::TaskControlBlock;
-use crate::config::MAX_APP_NUM;
 use crate::sync::UPSafeCell;
 
 pub struct TaskManager {
@@ -16,27 +16,24 @@ pub struct TaskManager {
 }
 
 struct TaskManagerInner {
-    tasks: [TaskControlBlock; MAX_APP_NUM],
+    tasks: Vec<TaskControlBlock>,
     current_task: usize,
 }
 
-use crate::loader::LOADER_MANAGER;
+use crate::loader::get_app_data;
 use crate::task::task::TaskStatus;
-use crate::loader::init_app_ctx;
+
+use crate::loader::get_num_app;
 
 fn init_task_manager() -> TaskManager {
-    let num_app = LOADER_MANAGER.exclusive_access().num_app;
-    let mut tasks = [
-        TaskControlBlock {
-            task_ctx: TaskContext::zero_init(),
-            task_status: TaskStatus::UnInit
-        };
-        MAX_APP_NUM
-    ];
+    let num_app = get_num_app();
+    println!("init TASK_MANAGER, num_app = {}", num_app);
+
+    let mut tasks: Vec<TaskControlBlock> = Vec::new();
     for i in 0..num_app {
-        tasks[i].task_ctx = TaskContext::goto_restore(init_app_ctx(i)); // sp at init_app_ctx, ra at __restore, s-regs zero
-        tasks[i].task_status = TaskStatus::Ready;
+        tasks.push(TaskControlBlock::from_elf(get_app_data(i),i));
     }
+    println!("finish init TASK_MANAGER");
     TaskManager {
         num_app,
         inner: unsafe { UPSafeCell::new(TaskManagerInner {
@@ -56,6 +53,7 @@ lazy_static! {
 use crate::sbi;
 use sbi::shutdown;
 use crate::task::switch::__switch;
+use crate::trap::TrapContext;
 
 impl TaskManager {
     pub fn suspend_current(&self) {
@@ -82,7 +80,7 @@ impl TaskManager {
     }
 
     fn run_next(&self) {
-        println!("[kernel] current time: {}", crate::timer::get_time());
+        println!("[kernel] run next! current time: {}", crate::timer::get_time());
         let cur : usize = self.inner.exclusive_access().current_task;
         if let Some(nxt) = self.find_next_task(cur) {
             let mut task_manager = self.inner.exclusive_access();
@@ -97,13 +95,14 @@ impl TaskManager {
             }
             // already switch to next task, running (U mode)
         } else {
-            println!("Finish time: {}", crate::timer::get_time());
-            println!("All applications completed!");
+            println!("===== Finish time: {} =====", crate::timer::get_time());
+            println!("All applications completed! Shutting down...");
             shutdown(false);
         }
     }
 
     fn run_first_task(&self) -> ! {
+        println!("===== start first task! =====");
         let mut task_manager = self.inner.exclusive_access();
         task_manager.tasks[0].task_status = TaskStatus::Running;
         let cur_task_ctx_ptr = &mut TaskContext::zero_init() as *mut TaskContext;
@@ -113,6 +112,22 @@ impl TaskManager {
             __switch(cur_task_ctx_ptr, nxt_task_ctx_ptr);
         }
         panic!("unreachable in run_first_task!");
+    }
+
+    fn get_current_satp(&self) -> usize {
+        let inner = self.inner.exclusive_access();
+        inner.tasks[inner.current_task].to_satp()
+    }
+
+    fn get_current_trap_ctx(&self) -> &'static mut TrapContext {
+        let inner = self.inner.exclusive_access();
+        inner.tasks[inner.current_task].get_trap_ctx()
+    }
+
+    pub fn change_current_program_brk(&self, size: i32) -> Option<usize> {
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        inner.tasks[cur].change_program_brk(size)
     }
 }
 
@@ -129,4 +144,16 @@ pub fn exit_current_and_run_next() {
 
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
+}
+
+pub fn current_user_satp() -> usize {
+    TASK_MANAGER.get_current_satp()
+}
+
+pub fn current_trap_ctx() -> &'static mut TrapContext {
+    TASK_MANAGER.get_current_trap_ctx()
+}
+
+pub fn change_program_brk(size: i32) -> Option<usize> {
+    TASK_MANAGER.change_current_program_brk(size)
 }

@@ -27,3 +27,6 @@ gdb:
 build:
 	cargo build --release
 	rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/ACore -O binary target/riscv64gc-unknown-none-elf/release/Acore.bin
+
+.PHONY: run
+run: build qemu_nosbi

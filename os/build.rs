@@ -77,15 +77,13 @@ _num_app:
     .global app_{0}_start
     .global app_{0}_end
 app_{0}_start:
-    .incbin "{1}{2}.bin"
+    .incbin "{1}{2}"
 app_{0}_end:"#,
             idx, TARGET_PATH, app
         )?;
     }
     Ok(())
 }
-
-// use cc::Build;
 
 fn main() {
     // if file in USER_BIN_DIR changed, recompile

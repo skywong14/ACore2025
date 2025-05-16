@@ -2,6 +2,7 @@
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
+#![feature(alloc_error_handler)]
 
 #[macro_use]
 extern crate bitflags;
@@ -38,7 +39,6 @@ fn debug_info() {
         fn ebss();
         fn ekernel();
         fn app_0_start();
-        fn app_3_end();
     }
     println!("====== Debug Info ====");
     println!("skernel: {:#x}", skernel as usize);
@@ -46,9 +46,8 @@ fn debug_info() {
     println!("etext: {:#x}", etext as usize);
     println!("sbss: {:#x}", sbss as usize);
     println!("ebss: {:#x}", ebss as usize);
-    println!("kernel: {:#x}", ekernel as usize);
+    println!("ekernel: {:#x}", ekernel as usize);
     println!("app_0_start: {:#x}", app_0_start as usize);
-    println!("app_3_end: {:#x}", app_3_end as usize);
     println!("=======================");
 }
 
@@ -96,13 +95,19 @@ pub fn rust_main() -> ! {
         sie::set_stimer();
         sie::set_ssoft(); // 使能S模式下的软件中断 this is necessary!
     }
+    // init bss & uart
     clear_bss();
     uart::init();
     debug_info();
+    
+    // init heap, frame_allocator, kernel space
     println!("[kernel] Hello, world!");
+    mm::init();
+    // mm::remap_test();
+    
     trap::init();
-    loader::load_apps();
-    timer::set_next_trigger(); // set first timer interrupt
+    timer::set_first_trigger();
+    println!("===== init task manager =====");
     task::run_first_task();
     panic!("Unreachable in rust_main!");
 }
