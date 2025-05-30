@@ -57,6 +57,7 @@ __restore:
 
     csrw sscratch, a0
     mv sp, a0
+    # save *TrapContext to sscratch (we'll use it in __alltraps)
     # now sp points to TrapContext in user space, start restoring based on it
     # restore sstatus/sepc
     ld t0, 32*8(sp)

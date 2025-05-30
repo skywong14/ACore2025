@@ -8,7 +8,7 @@ pub struct TrapContext {
     pub sepc: usize,         // CSR sepc
     pub kernel_satp: usize,  // kernel satp token (include PA of kernel's page table)
     pub kernel_sp: usize,    // (VA) kernel stack pointer
-    pub trap_handler: usize, // (VA) kernel's trap handler pointer
+    pub trap_handler: usize, // (VA) kernel's trap handler pointer, we only jump to it in S mode
 }
 
 impl TrapContext {
