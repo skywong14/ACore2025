@@ -1,9 +1,11 @@
 // os/src/mm/page_table.rs
 
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
+use core::ptr::null;
 use bitflags::*;
-use super::address::{PhyPageNum, VirAddr, VirPageNum};
+use super::address::{PhyAddr, PhyPageNum, VirAddr, VirPageNum};
 
 use crate::config::{PAGE_SIZE_BITS, PA_WIDTH};
 use crate::mm::frame_allocator::FrameTracker;
@@ -32,7 +34,7 @@ bitflags! {
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct PageTableEntry {
-    pub bits: usize,
+    pub bits: usize, // 标志位(低10位) + 物理页号
 }
 
 
@@ -86,7 +88,7 @@ impl PageTable {
     // ----- constructor -----
     pub fn new() -> Self {
         let frame = frame_alloc().unwrap();
-        println!("[page_table] Allocated page table frame: {:#x}", frame.ppn.0);
+        println_gray!("[page_table] Allocated page table frame: {:#x}", frame.ppn.0);
         Self {
             root_ppn: frame.ppn,
             frames: vec![frame],
@@ -106,7 +108,7 @@ impl PageTable {
             }
             if !current_pte.is_valid() {
                 let frame = frame_alloc().unwrap();
-                println!("[page_table] Allocated page table frame in 'create_entry': {:#x}", frame.ppn.0);
+                println_gray!("[page_table] Allocated page table frame in 'create_entry': {:#x}", frame.ppn.0);
                 current_pte.set_ppn(frame.ppn);
                 current_pte.set_flags(PTEFlags::V);
                 self.frames.push(frame);
@@ -164,8 +166,32 @@ impl PageTable {
             frames: Vec::new(),
         }
     }
-    pub fn translate(&self, vpn: VirPageNum) -> Option<PageTableEntry> {
-        self.find_entry(vpn).map(|pte| {pte.clone()})
+    // VPN -> PTE
+    pub fn translate_vpn(&self, vpn: VirPageNum) -> Option<PageTableEntry> {
+        let entry_option = self.find_entry(vpn);
+        if let Some(pte) = entry_option {
+            Some(pte.clone())
+        } else {
+            None
+        }
+    }
+    // VA -> PA
+    pub fn translate_va(&self, va: VirAddr) -> Option<PhyAddr> {
+        // 获取虚拟地址所在的虚拟页号
+        let vpn = va.clone().floor();
+        // 对应的页表项
+        let entry_option = self.find_entry(vpn);
+
+        if let Some(pte) = entry_option {
+            // 获取物理页号并转换为页对齐的物理地址
+            let aligned_pa: PhyAddr = pte.get_ppn().into();
+            let offset = va.page_offset(); // 页内的偏移量
+            // 最终物理地址（页对齐地址 + 偏移量）
+            let physical_addr = (usize::from(aligned_pa) + offset).into();
+            Some(physical_addr)
+        } else {
+            None
+        }
     }
 }
 
@@ -179,7 +205,7 @@ pub fn translated_byte_buffer(satp_token: usize, ptr: *const u8, len: usize) -> 
     while start < end {
         let start_va = VirAddr::from(start);
         let mut start_vpn = start_va.floor();
-        let ppn = page_table.translate(start_vpn).unwrap().get_ppn();
+        let ppn = page_table.translate_vpn(start_vpn).unwrap().get_ppn();
         start_vpn.0 += 1; // next page
         let mut end_va: VirAddr = start_vpn.into();
         end_va = end_va.min(VirAddr::from(end));
@@ -193,4 +219,32 @@ pub fn translated_byte_buffer(satp_token: usize, ptr: *const u8, len: usize) -> 
         start = end_va.into();
     }
     result
+}
+
+// 根据 ptr 找到要执行的应用名，返回 String
+pub fn translated_str(token: usize, ptr: *const u8) -> String {
+    let page_table = PageTable::from_satp_token(token);
+    let mut string = String::new();
+    let mut va = ptr as usize;
+    loop {
+        let pa = page_table.translate_va(VirAddr::from(va)).unwrap();
+        let ch: u8 = unsafe { *(pa.0 as *const u8) };
+        if ch == 0 {
+            break; // 结束符
+        } else {
+            string.push(ch as char);
+            va += 1;
+        }
+    }
+    string
+}
+
+// translate a ptr and return a mutable reference
+pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
+    let page_table = PageTable::from_satp_token(token);
+    let va = ptr as usize;
+    let phys_addr = page_table.translate_va(VirAddr::from(va)).unwrap();
+    unsafe {
+        (phys_addr.0 as *mut T).as_mut().unwrap()
+    }
 }

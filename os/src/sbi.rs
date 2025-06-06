@@ -6,13 +6,11 @@ use crate::config::TEST_DEVICE_ADDR;
 
 // console_putchar
 pub fn console_putchar(c: usize) {
-    #[allow(deprecated)]
     crate::uart::putchar(c);
 }
 
 // console_getchar
 pub fn console_getchar() -> usize {
-    // #[allow(deprecated)]
     crate::uart::getchar() as usize
 }
 

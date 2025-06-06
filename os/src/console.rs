@@ -30,3 +30,38 @@ macro_rules! println {
         $crate::console::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
     }
 }
+
+#[macro_export]
+macro_rules! println_green {
+    ($fmt:literal $(, $($arg:tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[32m", $fmt, "\x1b[0m", "\n") $(, $($arg)+)?));
+    }
+}
+
+#[macro_export]
+macro_rules! println_yellow {
+    ($fmt:literal $(, $($arg:tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[33m", $fmt, "\x1b[0m", "\n") $(, $($arg)+)?));
+    }
+}
+
+#[macro_export]
+macro_rules! println_red {
+    ($fmt:literal $(, $($arg:tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[31m", $fmt, "\x1b[0m", "\n") $(, $($arg)+)?));
+    }
+}
+
+#[macro_export]
+macro_rules! println_blue {
+    ($fmt:literal $(, $($arg:tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[34m", $fmt, "\x1b[0m", "\n") $(, $($arg)+)?));
+    }
+}
+
+#[macro_export]
+macro_rules! println_gray {
+    ($fmt:literal $(, $($arg:tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[37m", $fmt, "\x1b[0m", "\n") $(, $($arg)+)?));
+    }
+}

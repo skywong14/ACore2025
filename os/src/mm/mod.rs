@@ -12,9 +12,9 @@ pub use memory_set::remap_test;
 
 pub fn init() {
     heap_allocator::init_heap();
-    println!("[kernel] init_heap finished");
+    println_green!("[kernel] init_heap finished");
     frame_allocator::init_frame_allocator();
-    println!("[kernel] init_frame_allocator finished");
+    println_green!("[kernel] init_frame_allocator finished");
     KERNEL_SPACE.exclusive_access().activate();
-    println!("[kernel] activate kernel space finished");
+    println_green!("[kernel] activate kernel space finished");
 }

@@ -27,7 +27,7 @@ pub fn get_time() -> usize {
 pub fn set_first_trigger() {
     let cur_time = get_time();
     let next_time = cur_time + TIME_INTERVAL;
-    println!("[kernel] Set first timer interrupt, time: {}, nxt_time: {}", cur_time, next_time);
+    println_gray!("[kernel] Set first timer interrupt, time: {}, nxt_time: {}", cur_time, next_time);
     set_timer(get_time() + TIME_INTERVAL);
 }
 
@@ -42,7 +42,7 @@ pub fn set_timer(time: usize) {
         write_volatile(mtimecmp.add(1), 0xFFFF_FFFF);
         write_volatile(mtimecmp, 0xFFFF_FFFF);
         write_volatile(mtimecmp.add(1), (time >> 32) as u32);
-            write_volatile(mtimecmp, time as u32);
+        write_volatile(mtimecmp, time as u32);
     }
 }
 
@@ -69,5 +69,5 @@ pub unsafe fn init_timer() {
     // setup timer
     // set_timer(get_time() + TIME_INTERVAL); // not here
 
-    println!("[kernel] timer initialized");
+    println_green!("[kernel] timer initialized");
 }

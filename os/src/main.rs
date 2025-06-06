@@ -74,7 +74,7 @@ unsafe fn rust_boot() {
     // 全委托给 S-mode
     mideleg::set_stimer();
     mideleg::set_sext();
-    mideleg::set_ssoft();
+    mideleg::set_ssoft(); // 将软件中断的处理权从 M 模式委托给 S 模式
 
     // 全委托给 S-mode
     asm!(
@@ -101,14 +101,17 @@ pub fn rust_main() -> ! {
     debug_info();
     
     // init heap, frame_allocator, kernel space
-    println!("[kernel] Hello, world!");
+    println_green!("[kernel] Hello, Rust kernel!");
     mm::init();
-    // mm::remap_test();
-    
     trap::init();
+    loader::list_apps();
+    // mm::remap_test();
+    // loader::list_apps();
+
+    task::run_initproc();
     timer::set_first_trigger();
-    println!("===== init task manager =====");
-    task::run_first_task();
+    println!("[kernel] All apps loaded, start running tasks...");
+    task::run_tasks();
     panic!("Unreachable in rust_main!");
 }
 

@@ -44,22 +44,8 @@ impl MapArea {
 
     pub fn new_with_pagenum(start: VirPageNum, end: VirPageNum, map_type: MapType, map_perm: MapPermission) -> Self {
         let frames = BTreeMap::new();
-        println!("  debug: [map_area] new map area: {:#x} - {:#x}", start.0, end.0); //debug
+        // println!("  debug: [map_area] new map area: {:#x} - {:#x}", start.0, end.0); //debug
         let vpn_range = Range::new(start, end);
-        /*
-        match map_type {
-            MapType::Framed => {
-                for _ in vpn_range.iter() {
-                    frames.push(FrameTracker::new());
-                }
-            }
-            MapType::Identical => {
-                for vpn in vpn_range.iter() {
-                    frames.push(FrameTracker::from_existed(vpn.into()));
-                }
-            }
-        };
-        */
         Self {
             vpn_range,
             frames,
@@ -67,10 +53,14 @@ impl MapArea {
             map_perm,
         }
     }
-
-    // ----- utils -----
-    pub fn get_frame(&self, i: VirPageNum) -> &FrameTracker {
-        &self.frames[&i]
+    
+    pub fn new_from_another(another: &Self) -> Self {
+        Self {
+            vpn_range: another.vpn_range.clone(),
+            frames: BTreeMap::new(),
+            map_type: another.map_type,
+            map_perm: another.map_perm,
+        }
     }
 
     // ----- map methods -----
@@ -102,13 +92,13 @@ impl MapArea {
     }
 
     pub fn map_page_table(&mut self, page_table: &mut PageTable) {
-        for (i,vpn) in self.vpn_range.iter().enumerate() {
+        for (_, vpn) in self.vpn_range.iter().enumerate() {
             self.map_one(page_table, vpn);
         }
     }
 
     pub fn unmap_page_table(&mut self, page_table: &mut PageTable) {
-        for (i,vpn) in self.vpn_range.iter().enumerate() {
+        for (_, vpn) in self.vpn_range.iter().enumerate() {
             self.unmap_one(page_table, vpn);
         }
     }
@@ -124,7 +114,7 @@ impl MapArea {
         for cur_vpn in self.vpn_range.iter() {
             let src = &data[start..data_len.min(start + PAGE_SIZE)];
             let dst = &mut page_table
-                .translate(cur_vpn)
+                .translate_vpn(cur_vpn)
                 .unwrap() // PageTableEntry
                 .get_ppn() // PhyPageNum
                 .as_raw_bytes()[..src.len()];

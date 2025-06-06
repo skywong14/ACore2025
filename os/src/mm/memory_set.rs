@@ -6,9 +6,7 @@ use alloc::vec::Vec;
 use core::arch::asm;
 use lazy_static::lazy_static;
 use riscv::register::satp;
-use riscv::register::scause::Exception::VirtualInstruction;
 use crate::config::{CLINT_BASE, CLINT_SIZE, MEMORY_END, PAGE_SIZE, TEST_DEVICE_ADDR, TRAMPOLINE_START_ADDRESS, TRAP_CONTEXT_ADDRESS, UART0_BASE_ADDR, UART0_SIZE};
-use crate::console::print;
 use crate::mm::address::{PhyAddr, VirAddr, VirPageNum};
 use crate::mm::area::{MapArea, MapPermission};
 use crate::mm::area::MapType::{Framed, Identical};
@@ -60,20 +58,60 @@ impl MemorySet {
         }
     }
 
+    pub fn new_from_another_user(user_space: &Self) -> Self {
+        // include a new PageTable
+        let mut memory_set = Self::new_bare();
+
+        // map trampoline
+        memory_set.map_trampoline();
+
+        // copy Areas (sections, trap_ctx, stack)
+        for area in user_space.areas.iter() {
+            let new_area = MapArea::new_from_another(area);
+            memory_set.map_area(new_area, None);
+            // copy data
+            for vpn in area.vpn_range.iter() {
+                let src_ppn = user_space.page_table.translate_vpn(vpn).unwrap().get_ppn();
+                let dst_ppn = memory_set.page_table.translate_vpn(vpn).unwrap().get_ppn();
+                dst_ppn.as_raw_bytes().copy_from_slice(&src_ppn.as_raw_bytes());
+            }
+        }
+        memory_set
+    }
+
     // ----- methods -----
     // map a new MapArea to the MemorySet
     // 'data' as the initial data (when map_type is Framed)
     pub fn map_area(&mut self, mut area: MapArea, data: Option<&[u8]>) {
-        println!(
+        println_gray!(
             "[mem] Map area of [{:#x}, {:#x})",
             area.vpn_range.start.0,
             area.vpn_range.end.0,
         );
-        area.map_page_table(&mut self.page_table);
+        area.map_page_table(&mut self.page_table); // this step we'll alloc Frames
         if let Some(data) = data {
             area.copy_data(&mut self.page_table, data);
         }
         self.areas.push(area);
+    }
+
+    // unmap a MapArea from the MemorySet
+    pub fn unmap_area_with_start_vpn(&mut self, start_vpn: VirPageNum) {
+        let mut target_idx: Option<usize> = None;
+        // 手动遍历所有区域
+        for i in 0..self.areas.len() {
+            // 检查当前区域的起始虚拟页号是否匹配
+            if self.areas[i].vpn_range.start == start_vpn {
+                target_idx = Some(i);
+                break;
+            }
+        }
+        // 如果找到匹配的区域，解除映射和删除
+        if let Some(idx) = target_idx {
+            let area = &mut self.areas[idx];
+            area.unmap_page_table(&mut self.page_table); // 解除映射
+            self.areas.remove(idx); // 从列表中移除
+        }
     }
 
     // map_trampoline
@@ -82,8 +120,8 @@ impl MemorySet {
         unsafe extern "C" {
             fn strampoline();
         }
-        println!("[strampoline] [{:#x}, {:#x}]", TRAMPOLINE_START_ADDRESS, TRAMPOLINE_START_ADDRESS - 1 + PAGE_SIZE);
-        println!("[strampoline] V -> P: {:#x} -> {:#x}", VirAddr::from(TRAMPOLINE_START_ADDRESS).floor().0, PhyAddr::from(strampoline as usize).floor().0);
+        println_gray!("[strampoline] [{:#x}, {:#x}]", TRAMPOLINE_START_ADDRESS, TRAMPOLINE_START_ADDRESS - 1 + PAGE_SIZE);
+        println_gray!("[strampoline] V -> P: {:#x} -> {:#x}", VirAddr::from(TRAMPOLINE_START_ADDRESS).floor().0, PhyAddr::from(strampoline as usize).floor().0);
         self.page_table.map(
             VirAddr::from(TRAMPOLINE_START_ADDRESS).floor(), // VirPageNum
             PhyAddr::from(strampoline as usize).floor(), // PhyPageNum
@@ -93,6 +131,8 @@ impl MemorySet {
 
     // create kernel space
     pub fn new_kernel() -> Self {
+        println!("===== Creating kernel space =====");
+        
         unsafe extern "C" {
             fn stext();
             fn etext();
@@ -171,7 +211,7 @@ impl MemorySet {
         );
         
         // CLINT (Core Local Interruptor)
-        println!("[kernel]  memory-mapped registers (CLINT) [{:#x}, {:#x})", CLINT_BASE, CLINT_BASE + CLINT_SIZE);
+        println!("[kernel] Mapping memory-mapped registers (CLINT) [{:#x}, {:#x})", CLINT_BASE, CLINT_BASE + CLINT_SIZE);
         result.map_area(
             MapArea::new_with_address(
                 CLINT_BASE.into(), (CLINT_BASE + CLINT_SIZE).into(),
@@ -183,10 +223,14 @@ impl MemorySet {
         println!("[kernel] Mapping trampoline");
         result.map_trampoline();
 
+        println!("===============");
+
         result
     }
 
     /*
+    物理内存布局:
+    (低地址) 
     ...   // 代码、数据等Load段的空间
     +-----------------------------+
     | ELF段映射结束                 |
@@ -199,6 +243,7 @@ impl MemorySet {
     +-----------------------------+  <-  user_stack_top  （初始sp = 这里）
     | [未使用空间...]               |
     | ...                         |
+    (高地址)
      */
     // also returns `user_sp` and `entry point`.
     pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize) {
@@ -254,7 +299,7 @@ impl MemorySet {
         // guard page and stack page
         user_stack_bottom += PAGE_SIZE;
         let user_stack_top: usize = user_stack_bottom + PAGE_SIZE;
-        println!("[user] Mapping user stack [{:#x}, {:#x})", user_stack_bottom, user_stack_top);
+        println_gray!("[mem] Mapping user stack [{:#x}, {:#x})", user_stack_bottom, user_stack_top);
         result.map_area(
             MapArea::new_with_address(
                 user_stack_bottom.into(), user_stack_top.into(),
@@ -287,7 +332,11 @@ impl MemorySet {
     }
     
     pub fn translate(&self, vpn: VirPageNum) -> Option<PageTableEntry> {
-        self.page_table.translate(vpn)
+        self.page_table.translate_vpn(vpn)
+    }
+
+    pub fn recycle_data_pages(&mut self) {
+        self.areas.clear();
     }
 }
 
@@ -299,6 +348,7 @@ lazy_static! {
 
 
 // test
+#[allow(unused)]
 pub fn remap_test() {
     unsafe extern "C" {
         fn stext();
@@ -314,15 +364,15 @@ pub fn remap_test() {
     let mid_rodata: VirAddr = ((srodata as usize + erodata as usize) / 2).into();
     let mid_data: VirAddr = ((sdata as usize + edata as usize) / 2).into();
     assert_eq!(
-        kernel_space.page_table.translate(mid_text.floor()).unwrap().writable(),
+        kernel_space.page_table.translate_vpn(mid_text.floor()).unwrap().writable(),
         false
     );
     assert_eq!(
-        kernel_space.page_table.translate(mid_rodata.floor()).unwrap().writable(),
+        kernel_space.page_table.translate_vpn(mid_rodata.floor()).unwrap().writable(),
         false,
     );
     assert_eq!(
-        kernel_space.page_table.translate(mid_data.floor()).unwrap().executable(),
+        kernel_space.page_table.translate_vpn(mid_data.floor()).unwrap().executable(),
         false,
     );
     println!("remap_test passed!");

@@ -1,6 +1,6 @@
 // os/src/uart.rs
 use core::ptr::{read_volatile, write_volatile};
-
+use riscv::register::sstatus;
 // https://github.com/qemu/qemu/blob/7598971167080a8328a1b8e22425839cb4ccf7b7/hw/riscv/virt.c#L97
 
 use crate::config::{CLINT_MTIME, CLINT_MTIMECMP, UART0_BASE_ADDR, UART0_SIZE};
@@ -46,6 +46,7 @@ pub fn init() {
     }
 }
 
+// todo: lock
 // getchar
 pub fn getchar() -> u8 {
     // wait till data is available
@@ -78,4 +79,19 @@ unsafe fn read_uart_reg(offset: usize) -> u8 {
 unsafe fn write_uart_reg(offset: usize, value: u8) {
     assert!(offset < UART0_SIZE, "UART register offset out of range");
     write_volatile((UART0_BASE_ADDR + offset) as *mut u8, value);
+}
+
+// 读取 sstatus 寄存器中的 SPP (Supervisor Previous Privilege) 位
+pub unsafe fn read_spp() -> usize {
+    let sstatus_val = sstatus::read();
+
+    // SPP 位在 sstatus 寄存器的第8位
+    const SSTATUS_SPP: usize = 1 << 8;
+
+    // 检查 SPP 位并返回对应特权级的数值
+    if (sstatus_val.bits() & SSTATUS_SPP) != 0 {
+        1  // S-mode
+    } else {
+        0  // U-mode
+    }
 }
