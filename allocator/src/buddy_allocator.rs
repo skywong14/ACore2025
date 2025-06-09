@@ -24,7 +24,8 @@ pub struct BuddyAllocator {
 impl BuddyAllocator {
     // ----- constructors -----
     /// Create an empty BuddyAllocator with given `gran`
-    pub const fn empty(gran: usize) -> Self {
+    /// empty cannot be const, because usize is not const
+    pub fn empty(gran: usize) -> Self {
         Self {
             free_lists: [LinkedList::new(); BUDDY_ALLOCATOR_LEVEL],
             user: 0,
