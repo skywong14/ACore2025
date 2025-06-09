@@ -68,6 +68,4 @@ pub unsafe fn init_timer() {
 
     // setup timer
     // set_timer(get_time() + TIME_INTERVAL); // not here
-
-    println_green!("[kernel] timer initialized");
 }
