@@ -1,11 +1,13 @@
 // os/src/mm/heap_allocator.rs
 
 use crate::config::KERNEL_HEAP_SIZE;
-use buddy_system_allocator::LockedHeap; // todo
+// use buddy_system_allocator::LockedHeap;
+use buddy_allocator::SafeBuddyHeap;
 use core::ptr::addr_of_mut;
 
 #[global_allocator]
-static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
+// static HEAP_ALLOCATOR: LockedHeap = LockedHeap::empty();
+static HEAP_ALLOCATOR: SafeBuddyHeap = SafeBuddyHeap::empty(8);
 
 #[alloc_error_handler]
 // panic when heap allocation error occurs
@@ -19,7 +21,11 @@ static mut HEAP_SPACE: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
 // init
 pub fn init_heap() {
     unsafe {
-        HEAP_ALLOCATOR.lock().init(addr_of_mut!(HEAP_SPACE) as usize, KERNEL_HEAP_SIZE);
+        // HEAP_ALLOCATOR.lock().init(addr_of_mut!(HEAP_SPACE) as usize, KERNEL_HEAP_SIZE);
+        HEAP_ALLOCATOR.add_segment(
+            addr_of_mut!(HEAP_SPACE) as usize,
+            addr_of_mut!(HEAP_SPACE) as usize + KERNEL_HEAP_SIZE,
+        );
     }
 }
 

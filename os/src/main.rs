@@ -7,6 +7,7 @@
 #[macro_use]
 extern crate bitflags;
 extern crate alloc;
+// extern crate buddy_system_allocator;
 
 #[macro_use]
 mod console;
@@ -23,6 +24,7 @@ mod sync;
 mod timer;
 mod config;
 mod mm;
+mod fs;
 
 use core::arch::{asm, global_asm};
 use riscv::register::{mepc, mideleg, mstatus, pmpaddr0, pmpcfg0, satp, sie};

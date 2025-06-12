@@ -12,7 +12,7 @@ pub struct SafeBuddyHeap {
 impl SafeBuddyHeap {
     /// Create a new SafeBuddyHeap
     /// `gran` - 粒度值，定义了伙伴分配器中最小块的大小。
-    pub fn empty(gran: usize) -> Self {
+    pub const fn empty(gran: usize) -> Self {
         // Ensure gran is a power of 2
         assert!(gran > 0 && (gran & (gran - 1)) == 0, "Granularity must be a power of 2");
         Self {
