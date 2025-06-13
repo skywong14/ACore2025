@@ -42,10 +42,25 @@ pub fn trap_from_kernel() -> ! {
 pub fn trap_handler() -> ! {
     // trap_handler 只会处理来自用户态的 trap
     let scause = scause::read();
+    // staval 存储非零值的情况分为两种，一种是因为内存访问非法，一种则是因为指令本身非法
+    // 而其余的情况则是 stval 为 0
     let stval = stval::read();
     let mut ctx = current_trap_ctx();
     // println!("[trap_handler] scause = {:?}, stval = {:#x}, sepc = {:#x}", scause.bits(), stval, ctx.sepc);
     match scause.cause() {
+        // 需要注意的是，Interrupt 和 Exception 的处理机制是不同的，
+        // Interrupt 是异步的，Exception 是同步的，所以我们需要`显式清除`SIP寄存器中的对应位，
+        // 否则在重新使能中断后会立即再次触发相同的中断。
+        // 对于软件中断：软件直接写SIP寄存器清除SSIP位
+        // 对于定时器中断：通常需要通过写入新的比较值到stimecmp寄存器来间接清除STIP位
+        // 对于外部中断：通常需要与外部中断控制器交互来清除SEIP位
+        // 三者的优先级为 SEI > STI > SSI，不过我们这里只需要考虑 SSI
+
+        // 以下条件决定了是否响应 Interrupt
+        // `sstatus.SIE == 1 && sie.中断类型位 == 1 && sip.中断类型位 == 1`
+        // 注意，如果当前处理器运行在 U-Mode，那么 sstatus.SIE 不论是0还是1，S-Mode下的中断都是默认打开的。
+        // 因此我们选择不设置 sstatus.SIE 位，这样即实现了只相应 U-Mode 下产生的中断，避免了中断嵌套。（SIE 位是 S-Mode 下的总开关）
+        // 另外，我们在 rust_main 开头设置了 sie.ssoft = 1，在 m_trap_entry 中会修改 sip.ssoft = 1
         Trap::Interrupt(Interrupt::SupervisorSoft) => {
             println_gray!("[timer] ssoft(Timer Interrupt), time:{}", crate::timer::get_time());
             let sip = sip::read().bits();

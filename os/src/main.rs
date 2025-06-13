@@ -27,7 +27,7 @@ mod fs;
 mod drivers;
 
 use core::arch::{asm, global_asm};
-use riscv::register::{mepc, mideleg, mstatus, pmpaddr0, pmpcfg0, satp, sie};
+use riscv::register::{mepc, mideleg, mstatus, pmpaddr0, pmpcfg0, satp, sie, sstatus};
 use crate::fs::ROOT_INODE;
 
 global_asm!(include_str!("boot.s"));
@@ -70,6 +70,7 @@ unsafe fn rust_boot() {
     pmpcfg0::write(0xf);
 
     // init timer in M mode
+    // 需要注意的是，RISCV 中的时钟中断是被 CLINT 硬连线为一个 M-Mode 中断的，并且这个中断不能被委派到 S-Mode
     timer::init_timer();
 
     // 全委托给 S-mode
