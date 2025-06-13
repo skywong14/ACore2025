@@ -13,7 +13,6 @@ extern crate alloc;
 mod console;
 
 pub mod task;
-pub mod loader;
 pub mod syscall;
 pub mod trap;
 
@@ -29,6 +28,7 @@ mod drivers;
 
 use core::arch::{asm, global_asm};
 use riscv::register::{mepc, mideleg, mstatus, pmpaddr0, pmpcfg0, satp, sie};
+use crate::fs::ROOT_INODE;
 
 global_asm!(include_str!("boot.s"));
 // global_asm!(include_str!("link_app.s"));
@@ -88,6 +88,14 @@ unsafe fn rust_boot() {
     );
 }
 
+pub fn list_apps() {
+    println!("===== List of Apps =====");
+    for app in ROOT_INODE.ls() {
+        println!("{}", app);
+    }
+    println!("========================");
+}
+
 #[unsafe(no_mangle)]
 pub fn rust_main() -> ! {
     // S mode now
@@ -105,7 +113,7 @@ pub fn rust_main() -> ! {
     println_green!("[kernel] Hello, Rust kernel!");
     mm::init();
     trap::init();
-    loader::list_apps();
+    list_apps();
     // mm::remap_test();
 
     task::run_initproc();
