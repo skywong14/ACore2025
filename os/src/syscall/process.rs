@@ -1,10 +1,8 @@
 // os/src/syscall/syscall.rs
 
 use alloc::sync::Arc;
-use crate::loader::get_app_data_by_name;
-use crate::mm::address::VirAddr;
+use crate::fs::{open_file, OpenFlags};
 use crate::mm::page_table::{translated_refmut, translated_str};
-// use crate::task::{change_program_brk, current_user_satp};
 use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
 use crate::task::processor::{current_task, current_user_satp};
 use crate::task::task_manager::add_task;
@@ -64,9 +62,10 @@ pub fn sys_fork() -> isize {
 pub fn sys_exec(path: *const u8) -> isize {
     let token = current_user_satp();
     let path = translated_str(token, path);
-    if let Some(data) = get_app_data_by_name(path.as_str()) {
+    if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RD_ONLY) {
+        let data = app_inode.read_data(); // read all data from the file
         // elf data in `data`
-        current_task().unwrap().exec(data);
+        current_task().unwrap().exec(data.as_slice()); 
         0
     } else {
         -1

@@ -12,3 +12,5 @@ mod disk_inode;
 extern crate alloc;
 
 pub use block_dev::BlockDevice;
+pub use inode::Inode;
+pub use efs::EasyFileSystem;

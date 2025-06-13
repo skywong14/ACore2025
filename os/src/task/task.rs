@@ -2,11 +2,13 @@
 
 use alloc::vec::Vec;
 use alloc::sync::{Arc, Weak};
+use alloc::vec;
 use core::cell::RefMut;
 use crate::mm::address::{PhyPageNum, VirAddr};
 use crate::mm::KERNEL_SPACE;
 use crate::mm::memory_set::MemorySet;
 use crate::config::TRAP_CONTEXT_ADDRESS;
+use crate::fs::{File, Stdin, Stdout, Stderr};
 use crate::sync::UPSafeCell;
 use crate::task::pid::{pid_alloc, KernelStack, PidHandle};
 use crate::trap::{trap_handler, TrapContext};
@@ -33,6 +35,8 @@ pub struct TaskControlBlockInner {
     pub exit_code: i32,           // 进程退出码
     pub parent: Option<Weak<TaskControlBlock>>, // 父进程的 Weak 引用
     pub children: Vec<Arc<TaskControlBlock>>,   // 子进程的强引用列表
+
+    pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>, // 文件描述符表
 }
 
 impl TaskControlBlockInner {
@@ -90,6 +94,12 @@ impl TaskControlBlock {
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_kernel_top();
 
+        let fd_table: Vec<Option<Arc<dyn File + Send + Sync>>> = vec![
+            Some(Arc::new(Stdin)), // 0 -> stdin
+            Some(Arc::new(Stdout)), // 1 -> stdout
+            Some(Arc::new(Stderr)), // 2 -> stderr
+        ];
+        
         let inner = TaskControlBlockInner {
             task_status: TaskStatus::Ready,
             // 任务上下文，设置切换回 trap_return，初始时 sp 为 kernel_stack_top [注意: 这里是内核栈顶]
@@ -104,6 +114,8 @@ impl TaskControlBlock {
             exit_code: 0,
             parent: None,
             children: Vec::new(),
+
+            fd_table,
         };
 
         let task_control_block = Self {
@@ -170,6 +182,16 @@ impl TaskControlBlock {
         let pid_handle = pid_alloc();
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_kernel_top();
+        
+        // copy fd table
+        let mut new_fd_table: Vec<Option<Arc<dyn File + Send + Sync>>> = Vec::new();
+        for fd in &parent_inner.fd_table {
+            if let Some(file) = fd {
+                new_fd_table.push(Some(file.clone())); // 克隆文件描述符
+            } else {
+                new_fd_table.push(None); // 保留空位
+            }
+        }
 
         // 创建子进程的 TaskControlBlock
         let task_control_block = Arc::new(TaskControlBlock {
@@ -189,6 +211,8 @@ impl TaskControlBlock {
                     exit_code: 0,                           // 初始退出码为 0
                     parent: Some(Arc::downgrade(self)),     // 父进程为当前进程, downgrade from Arc to Weak
                     children: Vec::new(),                   // 初始化为空
+                    
+                    fd_table: new_fd_table,                 // 继承父进程的文件描述符表
                 })
             },
         });

@@ -20,6 +20,9 @@ pub const TEST_DEVICE_ADDR: usize = 0x100000; // shutdown devic, QEMU 测试设�
 pub const UART0_BASE_ADDR: usize = 0x10000000;
 pub const UART0_SIZE: usize = 0x100;
 
+pub const VIRTIO0_BASE_ADDR: usize = 0x10001000;
+pub const VIRTIO0_SIZE: usize = 0x1000; // 4KB
+
 pub const CLINT_BASE:     usize = 0x2000000;
 pub const CLINT_SIZE: usize = 0x10000;  // 64KB
 pub const CLINT_MTIMECMP: usize = CLINT_BASE + 0x4000; // hart 0, if single core

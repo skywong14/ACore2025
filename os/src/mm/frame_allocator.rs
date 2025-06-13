@@ -2,7 +2,7 @@
 
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
-use crate::config::{MEMORY_END, PAGE_SIZE};
+use crate::config::MEMORY_END;
 use crate::sync::UPSafeCell;
 use crate::mm::address::{PhyAddr, PhyPageNum};
 
@@ -55,7 +55,8 @@ impl FrameAllocator for StackFrameAllocator {
         }
     }
 
-    fn alloc(&mut self) -> Option<PhyPageNum> {        let candidate = self.recycled.pop();
+    fn alloc(&mut self) -> Option<PhyPageNum> {        
+        let candidate = self.recycled.pop();
         if let Some(ppn) = candidate {
             Some(ppn)
         } else if self.current < self.end {
@@ -121,6 +122,6 @@ pub fn frame_alloc() -> Option<FrameTracker> {
     }
 }
 
-fn frame_dealloc(ppn: PhyPageNum) {
+pub(crate) fn frame_dealloc(ppn: PhyPageNum) {
     FRAME_ALLOCATOR.exclusive_access().dealloc(ppn);
 }

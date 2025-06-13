@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 clap = "2.33.3"
-fs = { path = "../fs" }
+easy-fs = { path = "../fs" }
 rand = "0.8.0"

@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use core::arch::asm;
 use lazy_static::lazy_static;
 use riscv::register::satp;
-use crate::config::{CLINT_BASE, CLINT_SIZE, MEMORY_END, PAGE_SIZE, TEST_DEVICE_ADDR, TRAMPOLINE_START_ADDRESS, TRAP_CONTEXT_ADDRESS, UART0_BASE_ADDR, UART0_SIZE};
+use crate::config::{CLINT_BASE, CLINT_SIZE, MEMORY_END, PAGE_SIZE, TEST_DEVICE_ADDR, TRAMPOLINE_START_ADDRESS, TRAP_CONTEXT_ADDRESS, UART0_BASE_ADDR, UART0_SIZE, VIRTIO0_BASE_ADDR, VIRTIO0_SIZE};
 use crate::mm::address::{PhyAddr, VirAddr, VirPageNum};
 use crate::mm::area::{MapArea, MapPermission};
 use crate::mm::area::MapType::{Framed, Identical};
@@ -210,6 +210,15 @@ impl MemorySet {
             ), None
         );
         
+        // VirtIO (Virtual Input/Output)
+        println!("[kernel] Mapping VirtIO device [{:#x}, {:#x})", VIRTIO0_BASE_ADDR, VIRTIO0_BASE_ADDR + VIRTIO0_SIZE);
+        result.map_area(
+            MapArea::new_with_address(
+                VIRTIO0_BASE_ADDR.into(), (VIRTIO0_BASE_ADDR + VIRTIO0_SIZE).into(),
+                Identical, MapPermission::R | MapPermission::W
+            ), None
+        );
+        
         // CLINT (Core Local Interruptor)
         println!("[kernel] Mapping memory-mapped registers (CLINT) [{:#x}, {:#x})", CLINT_BASE, CLINT_BASE + CLINT_SIZE);
         result.map_area(
@@ -253,7 +262,7 @@ impl MemorySet {
         result.map_trampoline();
 
         // headers of elf (U)
-        let elf = xmas_elf::ElfFile::new(elf_data).unwrap(); //todo "Did not find ELF magic number"
+        let elf = xmas_elf::ElfFile::new(elf_data).unwrap();
         let elf_header = elf.header;
         let magic = elf_header.pt1.magic;
         assert_eq!(magic, [0x7f, 0x45, 0x4c, 0x46], "invalid elf!");

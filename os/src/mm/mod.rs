@@ -8,6 +8,8 @@ pub(crate) mod heap_allocator;
 
 pub use memory_set::KERNEL_SPACE;
 
+pub use page_table::UserBuffer;
+
 pub use memory_set::remap_test;
 
 pub fn init() {

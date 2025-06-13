@@ -248,3 +248,21 @@ pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
         (phys_addr.0 as *mut T).as_mut().unwrap()
     }
 }
+
+// ----- User Buffer -----
+pub struct UserBuffer {
+    pub buffers: Vec<&'static mut [u8]>,
+}
+
+impl UserBuffer {
+    pub fn new(buffers: Vec<&'static mut [u8]>) -> Self {
+        Self { buffers }
+    }
+    pub fn len(&self) -> usize {
+        let mut total: usize = 0;
+        for slice in self.buffers.iter() {
+            total += slice.len();
+        }
+        total
+    }
+}

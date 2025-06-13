@@ -1,13 +1,14 @@
 // fs-fuse/src/main.rs
-// this file is from rCore-ch6
+// this file is mainly from rCore-ch6
+// use `cargo run -- -s ../user/target/riscv64gc-unknown-none-elf/release/ -t ./target/` to create image
 
 use std::fs::{read_dir, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::sync::Mutex;
 use std::sync::Arc;
 use clap::{App, Arg};
-use fs::BlockDevice;
-use fs::efs::EasyFileSystem;
+use easy_fs::BlockDevice;
+use easy_fs::efs::EasyFileSystem;
 
 const BLOCK_SZ: usize = 512;
 
@@ -68,15 +69,31 @@ fn easy_fs_pack() -> std::io::Result<()> {
     let apps: Vec<_> = read_dir(src_path)
         .unwrap()
         .into_iter()
-        .map(|dir_entry| {
-            let mut name_with_ext = dir_entry.unwrap().file_name().into_string().unwrap();
-            name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
-            name_with_ext
+        .filter_map(|dir_entry| {
+            let dir_entry = dir_entry.unwrap();
+            // 排除目录
+            if let Ok(file_type) = dir_entry.file_type() {
+                if file_type.is_file() {
+                    let name = dir_entry.file_name().into_string().unwrap();
+                    // 不包含点号
+                    if !name.contains('.') {
+                        return Some(name);
+                    }
+                }
+            }
+            None
         })
         .collect();
     for app in apps {
         // load app data from host file system
-        let mut host_file = File::open(format!("{}{}", target_path, app)).unwrap();
+        let file_path = format!("{}{}", src_path, app);
+        let mut host_file = match File::open(&file_path) {
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("Error! Fail to open {}: {}", file_path, e);
+                return Err(e);
+            }
+        };
         let mut all_data: Vec<u8> = Vec::new();
         host_file.read_to_end(&mut all_data).unwrap();
         // create a file in easy-fs
@@ -85,9 +102,9 @@ fn easy_fs_pack() -> std::io::Result<()> {
         inode.write_at(0, all_data.as_slice());
     }
     // list apps
-    // for app in root_inode.ls() {
-    //     println!("{}", app);
-    // }
+    for app in root_inode.ls() {
+        println!("{}", app);
+    }
     Ok(())
 }
 

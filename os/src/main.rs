@@ -25,12 +25,13 @@ mod timer;
 mod config;
 mod mm;
 mod fs;
+mod drivers;
 
 use core::arch::{asm, global_asm};
 use riscv::register::{mepc, mideleg, mstatus, pmpaddr0, pmpcfg0, satp, sie};
 
 global_asm!(include_str!("boot.s"));
-global_asm!(include_str!("link_app.s"));
+// global_asm!(include_str!("link_app.s"));
 
 fn debug_info() {
     unsafe extern "C" {
@@ -40,7 +41,6 @@ fn debug_info() {
         fn sbss();
         fn ebss();
         fn ekernel();
-        fn app_0_start();
     }
     println!("====== Debug Info ====");
     println!("skernel: {:#x}", skernel as usize);
@@ -49,7 +49,6 @@ fn debug_info() {
     println!("sbss: {:#x}", sbss as usize);
     println!("ebss: {:#x}", ebss as usize);
     println!("ekernel: {:#x}", ekernel as usize);
-    println!("app_0_start: {:#x}", app_0_start as usize);
     println!("=======================");
 }
 
@@ -108,7 +107,6 @@ pub fn rust_main() -> ! {
     trap::init();
     loader::list_apps();
     // mm::remap_test();
-    // loader::list_apps();
 
     task::run_initproc();
     timer::set_first_trigger();

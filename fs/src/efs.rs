@@ -10,8 +10,8 @@ use crate::inode::Inode;
 use crate::disk_inode::{DiskInode, DiskInodeType, DataBlock};
 use crate::super_block::SuperBlock;
 
-/// Easy FIle System (EFS) implementation
-/// this is a structure on Memory
+/// Easy File System (EFS) implementation
+/// this is a structure in Memory
 pub struct EasyFileSystem {
     pub block_device: Arc<dyn BlockDevice>,
     pub inode_bitmap: Bitmap,

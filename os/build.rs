@@ -105,5 +105,6 @@ fn main() {
     println!("cargo:rerun-if-changed={}", USER_BIN_DIR);
     println!("cargo:rerun-if-changed={}", TARGET_PATH);
 
-    insert_app_data().unwrap();
+    // we no longer need build.rs to generate link_app.s after we have all datas in `fs.img`
+    // insert_app_data().unwrap();
 }
